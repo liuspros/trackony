@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { subscribeSession } from "@/lib/sessions";
-import { distanceKm } from "@/lib/geo";
+import { distanceKm, metersBetween } from "@/lib/geo";
 
 const STALE_MS = 60000;
 
@@ -25,10 +25,13 @@ export function useLiveSession(code) {
         }
         setSession(data);
         setStatus("live");
+        // only extend the trail with confident, meaningful movement
+        if ((data.acc ?? 0) > 100) return;
         setTrail((t) => {
           const p = [data.lat, data.lng];
           const last = t[t.length - 1];
-          return !last || distanceKm(last, p) > 0.003 ? [...t, p] : t;
+          const min = Math.max(8, (data.acc ?? 0) * 0.5);
+          return !last || metersBetween(last, p) > min ? [...t, p] : t;
         });
       },
       () => setStatus("error")

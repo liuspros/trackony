@@ -3,15 +3,17 @@ import { useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useShareLocation } from "@/hooks/useShareLocation";
-import { prettyCode } from "@/lib/geo";
+import { prettyCode, qualityLabel } from "@/lib/geo";
 import StatusBadge from "@/components/StatusBadge";
 
 const LiveMap = dynamic(() => import("@/components/LiveMap"), { ssr: false });
 
 export default function SharePage() {
-  const { status, code, position, error, start, stop } = useShareLocation();
+  const { status, code, position, error, note, start, stop } = useShareLocation();
   const [copied, setCopied] = useState(false);
   const active = status === "starting" || status === "live";
+  const acc = position?.acc;
+  const precise = acc != null && acc <= 50;
 
   const copy = async () => {
     await navigator.clipboard?.writeText(`${location.origin}/watch/${code}`);
@@ -22,7 +24,7 @@ export default function SharePage() {
   return (
     <main className="relative h-dvh">
       <LiveMap position={position} follow />
-      <section className="sheet">
+      <section className="sheet max-h-[65dvh] overflow-y-auto">
         {!active ? (
           <>
             <Link href="/" className="mb-3 inline-block text-sm text-neutral-500 hover:text-black">Back</Link>
@@ -35,8 +37,19 @@ export default function SharePage() {
           </>
         ) : (
           <>
-            <StatusBadge live={status === "live"} label={status === "live" ? "Sharing live" : "Waiting for GPS…"} />
+            <StatusBadge live={precise} label={precise ? "Sharing live" : "Improving accuracy…"} />
             <div className="mb-1 text-3xl font-semibold tracking-[0.12em]">{prettyCode(code)}</div>
+            {acc != null && (
+              <p className="mb-2 text-sm font-medium">
+                ±{Math.round(acc)} m <span className="font-normal text-neutral-500">· {qualityLabel(acc)}</span>
+              </p>
+            )}
+            {!precise && (
+              <p className="mb-2 text-sm text-neutral-600">
+                Go outside or next to a window. On iPhone, allow Precise Location for Safari.
+              </p>
+            )}
+            {note && <p className="mb-2 text-sm text-neutral-600">{note}</p>}
             <p className="mb-4 text-sm text-neutral-600">
               Send this code or link. Keep this screen open: phones pause location when the screen locks.
             </p>
