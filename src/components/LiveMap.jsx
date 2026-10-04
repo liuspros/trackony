@@ -5,6 +5,7 @@ import "leaflet/dist/leaflet.css";
 
 const BURGUNDY = "#7a1f33";
 const MAPBOX = process.env.NEXT_PUBLIC_MAPBOX_TOKEN; // optional, adds a "Detail" layer
+const MAPTILER = process.env.NEXT_PUBLIC_MAPTILER_KEY; // optional, free key, adds an "HD" layer
 const IMAGERY = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 const LABELS = "https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png";
 const STREET = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
@@ -14,6 +15,7 @@ const MODES = [
   ["hybrid", "Hybrid"],
   ["satellite", "Satellite"],
   ["street", "Street"],
+  ...(MAPTILER ? [["hd", "HD"]] : []),
   ...(MAPBOX ? [["detail", "Detail"]] : []),
 ];
 
@@ -36,7 +38,19 @@ const pinIcon = () => {
 const imagery = () =>
   L.tileLayer(IMAGERY, { maxZoom: 21, maxNativeZoom: 18, attribution: "Imagery © Esri, Maxar, Earthstar Geographics" });
 
+const labels = () =>
+  L.tileLayer(LABELS, { maxZoom: 21, maxNativeZoom: 20, subdomains: "abcd", attribution: "Labels © OpenStreetMap contributors © CARTO" });
+
 function makeBase(mode) {
+  if (mode === "hd")
+    return L.layerGroup([
+      L.tileLayer(`https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key=${MAPTILER}`, {
+        maxZoom: 21,
+        maxNativeZoom: 18,
+        attribution: "© MapTiler © OpenStreetMap contributors",
+      }),
+      labels(),
+    ]);
   if (mode === "street")
     return L.tileLayer(STREET, { maxZoom: 21, maxNativeZoom: 19, attribution: "© OpenStreetMap contributors" });
   if (mode === "detail")
@@ -56,7 +70,7 @@ export default function LiveMap({ position, trail = [], follow = true, onUserPan
   const r = useRef({});
   const panCb = useRef(onUserPan);
   panCb.current = onUserPan;
-  const [mode, setMode] = useState("hybrid");
+  const [mode, setMode] = useState(MAPTILER ? "hd" : "hybrid");
 
   useEffect(() => {
     const map = L.map(el.current, { zoomControl: false }).setView([9.08, 8.68], 6);

@@ -6,10 +6,8 @@ import dynamic from "next/dynamic";
 import { useLiveSession } from "@/hooks/useLiveSession";
 import { useAddress } from "@/hooks/useAddress";
 import { useSafeZone } from "@/hooks/useSafeZone";
-import { useFinder } from "@/hooks/useFinder";
 import { normalizeCode, prettyCode, formatAgo, formatSpeed, qualityLabel } from "@/lib/geo";
 import StatusBadge from "@/components/StatusBadge";
-import Finder from "@/components/Finder";
 
 const LiveMap = dynamic(() => import("@/components/LiveMap"), { ssr: false });
 
@@ -26,19 +24,10 @@ export default function WatchPage() {
   const code = normalizeCode(String(useParams().code ?? ""));
   const [follow, setFollow] = useState(true);
   const [radius, setRadius] = useState(200);
-  const [copied, setCopied] = useState(false);
   const { position, speed, trail, status, ageMs, distance, clearTrail } = useLiveSession(code);
   const address = useAddress(position);
   const { zone, outside, set: setZone, clear: clearZone } = useSafeZone(code, position);
-  const finder = useFinder();
   const acc = position?.acc;
-  const coords = position ? `${position.lat.toFixed(6)}, ${position.lng.toFixed(6)}` : null;
-
-  const copyCoords = async () => {
-    await navigator.clipboard?.writeText(coords);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
-  };
 
   const stats = [
     ["Last update", formatAgo(ageMs)],
@@ -49,7 +38,7 @@ export default function WatchPage() {
 
   return (
     <main className="relative h-dvh">
-      <LiveMap position={position} trail={trail} follow={follow} onUserPan={() => setFollow(false)} zone={zone} me={finder.me} />
+      <LiveMap position={position} trail={trail} follow={follow} onUserPan={() => setFollow(false)} zone={zone} />
       <section className="sheet max-h-[65dvh] overflow-y-auto">
         <div className="flex items-start justify-between">
           <StatusBadge live={status === "live"} label={LABELS[status]} />
@@ -61,20 +50,12 @@ export default function WatchPage() {
             Outside the {zone.r} m safe zone
           </p>
         )}
-        {address && <p className="mb-1 text-sm font-medium">{address}</p>}
-        {coords && (
-          <p className="mb-3 flex items-center gap-2 text-xs text-neutral-500">
-            <span className="font-mono">{coords}</span>
-            <button onClick={copyCoords} className="underline">{copied ? "Copied" : "Copy"}</button>
-          </p>
-        )}
+        {address && <p className="mb-3 text-sm font-medium">{address}</p>}
         {status === "stale" && (
           <p className="mb-3 text-sm text-neutral-600">
             The phone may have locked its screen or left the page. Updates resume when it is open again.
           </p>
         )}
-
-        <Finder target={position} finder={finder} />
 
         <dl className="mb-3 grid grid-cols-2 gap-2">
           {stats.map(([k, v]) => (
