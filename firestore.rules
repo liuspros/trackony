@@ -1,0 +1,16 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // One document per sharing session, keyed by the 8-character code.
+    match /sessions/{code} {
+      // Anyone signed in (anonymously) who knows the code can read it. Listing is blocked.
+      allow get: if request.auth != null;
+      allow list: if false;
+      // Only the phone that started the session can write to it.
+      allow create: if request.auth != null
+                    && request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if request.auth != null
+                    && resource.data.ownerUid == request.auth.uid;
+    }
+  }
+}
